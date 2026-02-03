@@ -1,16 +1,25 @@
-# LearnX (Full‑Stack LMS)
+# LearnX 
 
-LearnX is a full‑stack Learning Management System I built using **React (Vite)** + **Node/Express** + **MongoDB**.
+LearnX is a full-stack Learning Management System built as a **portfolio and evaluation project**.
+
+This project is **not open source**.
+The code is shared publicly **for demonstration purposes only**.
+
+If you are a company, startup, or institution interested in:
+- Licensing this LMS
+- Custom development
+- Hiring the developer
+
+Please contact me below.
 
 If you want to build an LMS / training platform (for a company, coaching, courses, internal onboarding, etc.) and you want me to help you build it, you can reach me here:
 
-- Email: **your-email-here@example.com**
-- LinkedIn: **https://www.linkedin.com/in/your-handle**
-- GitHub: **https://github.com/your-handle**
+- Email: **rithish.r.2307@gmail.com**
+- LinkedIn: **https://www.linkedin.com/in/rithish-to-connect**
+- GitHub: **https://github.com/Rithishingit**
 
-> Replace the links above with your real contact details.
 
----
+LearnX is a full‑stack Learning Management System I built using **React (Vite)** + **Node/Express** + **MongoDB**.
 
 ## What you get
 
@@ -208,4 +217,5 @@ If you want to improve something, feel free to open a PR.
 
 ## License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+This project is licensed under the custom "All Rights Reserved" License
+
