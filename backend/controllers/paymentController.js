@@ -3,10 +3,12 @@ const crypto = require('crypto');
 const Enrollment = require('../models/Enrollment');
 const Course = require('../models/Course');
 
-const razorpay = new Razorpay({
-    key_id: process.env.RAZORPAY_KEY_ID,
-    key_secret: process.env.RAZORPAY_KEY_SECRET,
-});
+const razorpay = process.env.RAZORPAY_KEY_ID && process.env.RAZORPAY_KEY_SECRET
+    ? new Razorpay({
+        key_id: process.env.RAZORPAY_KEY_ID,
+        key_secret: process.env.RAZORPAY_KEY_SECRET,
+    })
+    : null;
 
 // @desc    Create Razorpay order
 // @route   POST /api/payments/order
@@ -19,6 +21,13 @@ exports.createOrder = async (req, res, next) => {
         if (!course) {
             res.status(404);
             throw new Error('Course not found');
+        }
+
+        if (!razorpay) {
+            return res.status(503).json({
+                success: false,
+                message: 'Payment gateway is not configured yet.',
+            });
         }
 
         const options = {
