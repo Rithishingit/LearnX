@@ -24,3 +24,6 @@ This file tracks the major milestones, fixes, and verification steps for the Lea
 - Test register/login flow end to end.
 - Seed sample courses and users for a fuller demo experience.
 - Prepare a clean, reviewable commit for the current progress.
+
+
+## Big update tomorrow
