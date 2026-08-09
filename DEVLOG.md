@@ -2,7 +2,7 @@
 
 This file tracks the major milestones, fixes, and verification steps for the LearnX project.
 
-## 2026-08-05
+## 2026-08-09
 
 ### Status
 - Local frontend and backend are running successfully.
@@ -25,5 +25,5 @@ This file tracks the major milestones, fixes, and verification steps for the Lea
 - Seed sample courses and users for a fuller demo experience.
 - Prepare a clean, reviewable commit for the current progress.
 
-
-## Big Updates soon...
+# Updates on testing...
+# On progress... Getting Streaks
