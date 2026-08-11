@@ -1,36 +1,75 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { motion, useScroll, useTransform, useSpring, useInView, AnimatePresence } from 'framer-motion';
-import { 
-  ArrowRight, Play, Star, Users, CheckCircle, Clock, Award, TrendingUp,
-  BookOpen, Globe, Zap, Shield, Target, Sparkles, ChevronRight,
-  GraduationCap, Building2, Heart, Rocket, X, MapPin, Phone, Mail, 
-  Send, Linkedin, Twitter, Github, FileText, Headphones, Briefcase
+import { motion, AnimatePresence, useInView, useScroll, useSpring } from 'framer-motion';
+import {
+  ArrowRight, Play, Clock, Award, Zap, Shield, Target, Sparkles,
+  ChevronRight, GraduationCap, Heart, Rocket, X, MapPin, Phone, Mail,
+  Linkedin, Twitter, Github, FileText, Headphones, Briefcase
 } from 'lucide-react';
 import BrandLogo from './BrandLogo';
 import api from '../services/api';
 import { resolveCourseThumbnail, applyThumbnailFallback } from '../utils/courseMedia';
 
+const DOMAIN_PALETTE = [
+  { accent: '#8b5cf6', soft: 'rgba(139,92,246,0.18)' },
+  { accent: '#06b6d4', soft: 'rgba(6,182,212,0.18)' },
+  { accent: '#10b981', soft: 'rgba(16,185,129,0.18)' },
+  { accent: '#f59e0b', soft: 'rgba(245,158,11,0.18)' },
+  { accent: '#f43f5e', soft: 'rgba(244,63,94,0.18)' },
+  { accent: '#3b82f6', soft: 'rgba(59,130,246,0.18)' },
+];
+
+const DOMAIN_ICONS = {
+  'Business & Management': '◈',
+  'Technology & IT': '⌘',
+  'Creative & Design': '✦',
+  'Health & Wellness': '＋',
+  'Personal Development': '↗',
+  'Science & Research': '∿',
+};
+
+const PROCESS = [
+  {
+    number: '01',
+    title: 'LEARN',
+    description: 'Build the foundation that everything else stands on.',
+    icon: Target,
+  },
+  {
+    number: '02',
+    title: 'PRACTICE',
+    description: 'Turn understanding into real capability through deliberate work.',
+    icon: Zap,
+  },
+  {
+    number: '03',
+    title: 'BUILD',
+    description: 'Create, experiment, and solve problems that make the knowledge useful.',
+    icon: Award,
+  },
+  {
+    number: '04',
+    title: 'EVOLVE',
+    description: 'Reflect, improve, and move naturally into harder challenges.',
+    icon: Shield,
+  },
+];
+
 const Homepage = () => {
   const navigate = useNavigate();
   const [courses, setCourses] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [activeExploreIndex, setActiveExploreIndex] = useState(0);
   const [activeModal, setActiveModal] = useState(null);
   const { scrollYProgress } = useScroll();
   const smoothProgress = useSpring(scrollYProgress, { stiffness: 100, damping: 30 });
 
-  // Fetch featured courses
   useEffect(() => {
     const fetchCourses = async () => {
       try {
         const response = await api.get('/courses');
         if (response.data.success) {
-          // Don't just take the first 6 (seed order biases to Business courses).
-          // Pick top courses by enrollment so we get variety (AWS/tech etc show up).
-          const sorted = [...(response.data.data || [])].sort(
-            (a, b) => (b.studentsEnrolled || 0) - (a.studentsEnrolled || 0)
-          );
-          setCourses(sorted.slice(0, 6));
+          setCourses(Array.isArray(response.data.data) ? response.data.data : []);
         }
       } catch (error) {
         console.error('Failed to fetch courses:', error);
@@ -41,81 +80,104 @@ const Homepage = () => {
     fetchCourses();
   }, []);
 
-  // Stats data - universal metrics
-  const stats = [
-    { value: '50K+', label: 'Active Learners', icon: Users },
-    { value: '500+', label: 'Expert Courses', icon: BookOpen },
-    { value: '100+', label: 'Countries', icon: Globe },
-    { value: '94%', label: 'Success Rate', icon: TrendingUp },
-  ];
+  const domains = useMemo(() => {
+    const grouped = new Map();
+    courses.forEach((course) => {
+      const name = String(course?.category || 'General').trim() || 'General';
+      if (!grouped.has(name)) grouped.set(name, []);
+      grouped.get(name).push(course);
+    });
 
-  // Universal features that work for any LMS
-  const features = [
-    {
-      icon: Target,
-      title: 'Goal-Oriented Learning',
-      description: 'Structured paths designed to take you from beginner to expert in any field.',
-      gradient: 'from-violet-500 to-purple-600',
-    },
-    {
-      icon: Award,
-      title: 'Verified Certificates',
-      description: 'Earn industry-recognized credentials that boost your career prospects.',
-      gradient: 'from-amber-500 to-orange-600',
-    },
-    {
-      icon: Zap,
-      title: 'Learn at Your Pace',
-      description: 'Flexible scheduling that adapts to your life, not the other way around.',
-      gradient: 'from-cyan-500 to-blue-600',
-    },
-    {
-      icon: Shield,
-      title: 'Expert Instructors',
-      description: 'Learn from industry leaders with real-world experience and proven track records.',
-      gradient: 'from-emerald-500 to-teal-600',
-    },
-  ];
+    return Array.from(grouped.entries())
+      .map(([name, domainCourses], index) => ({
+        name,
+        courses: domainCourses,
+        count: domainCourses.length,
+        index,
+        icon: DOMAIN_ICONS[name] || '•',
+        palette: DOMAIN_PALETTE[index % DOMAIN_PALETTE.length],
+      }))
+      .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name));
+  }, [courses]);
 
-  // Universal categories - works for any industry
-  const categories = [
-    { name: 'Business & Management', icon: '📊', count: 120 },
-    { name: 'Technology & IT', icon: '💻', count: 85 },
-    { name: 'Creative & Design', icon: '🎨', count: 64 },
-    { name: 'Health & Wellness', icon: '🏥', count: 48 },
-    { name: 'Personal Development', icon: '🌱', count: 92 },
-    { name: 'Science & Research', icon: '🔬', count: 56 },
-  ];
+  const featuredCourses = useMemo(() => {
+    if (!courses.length) return [];
+    const picked = [];
+    const seen = new Set();
+    for (const domain of domains) {
+      const course = domain.courses[0];
+      if (course && !seen.has(course._id)) {
+        picked.push(course);
+        seen.add(course._id);
+      }
+      if (picked.length === 6) break;
+    }
+    if (picked.length < 6) {
+      courses.forEach((course) => {
+        if (picked.length < 6 && !seen.has(course._id)) {
+          picked.push(course);
+          seen.add(course._id);
+        }
+      });
+    }
+    return picked;
+  }, [courses, domains]);
 
-  // Testimonials - universal
-  const testimonials = [
+  const exploreItems = useMemo(() => ([
     {
-      name: 'Sarah Johnson',
-      role: 'Marketing Director',
-      company: 'Global Corp',
-      image: 'SJ',
-      quote: 'This platform transformed how our team learns. The quality of content is unmatched.',
-      rating: 5,
+      name: 'All Courses',
+      count: courses.length,
+      icon: '↗',
+      palette: { accent: '#ffffff', soft: 'rgba(255,255,255,0.12)' },
+      courses,
+      isAll: true,
     },
-    {
-      name: 'Michael Chen',
-      role: 'Career Switcher',
-      company: 'Tech Startup',
-      image: 'MC',
-      quote: 'I went from complete beginner to landing my dream job in just 6 months.',
-      rating: 5,
-    },
-    {
-      name: 'Emily Rodriguez',
-      role: 'HR Manager',
-      company: 'Enterprise Inc',
-      image: 'ER',
-      quote: 'We use this for all our corporate training. The ROI has been incredible.',
-      rating: 5,
-    },
-  ];
+    ...domains.map((domain) => ({ ...domain, isAll: false })),
+  ]), [courses, domains]);
 
-  // Footer data
+  const activeExploreItem = exploreItems[activeExploreIndex] || exploreItems[0] || null;
+
+  const containerVariants = {
+    hidden: { opacity: 0 },
+    visible: { opacity: 1, transition: { staggerChildren: 0.08, delayChildren: 0.15 } },
+  };
+
+  const itemVariants = {
+    hidden: { opacity: 0, y: 24 },
+    visible: { opacity: 1, y: 0, transition: { duration: 0.65, ease: [0.22, 1, 0.36, 1] } },
+  };
+
+  const AnimatedSection = ({ children, className = '' }) => {
+    const ref = useRef(null);
+    const isInView = useInView(ref, { once: true, margin: '-100px' });
+    return (
+      <motion.section
+        ref={ref}
+        className={className}
+        initial={{ opacity: 0, y: 40 }}
+        animate={isInView ? { opacity: 1, y: 0 } : { opacity: 0, y: 40 }}
+        transition={{ duration: 0.75, ease: [0.22, 1, 0.36, 1] }}
+      >
+        {children}
+      </motion.section>
+    );
+  };
+
+  const changeExplore = (direction) => {
+    if (!exploreItems.length) return;
+    setActiveExploreIndex((current) => (current + direction + exploreItems.length) % exploreItems.length);
+  };
+
+  const selectExploreItem = (index) => {
+    if (!exploreItems.length) return;
+    setActiveExploreIndex((index + exploreItems.length) % exploreItems.length);
+  };
+
+  const goToDomain = (name) => {
+    navigate(`/courses?category=${encodeURIComponent(name)}`);
+  };
+
+  // Footer data intentionally preserved for a later homepage traversal pass.
   const footerLinks = {
     learning: [
       { name: 'Browse Courses', href: '/courses', type: 'link' },
@@ -137,578 +199,291 @@ const Homepage = () => {
     ],
   };
 
-  // Modal content
   const modalContent = {
     about: {
-      title: 'About Us',
-      icon: Rocket,
-      content: (
-        <div className="space-y-6">
-          <p className="text-gray-300 leading-relaxed">
-            We're on a mission to make quality education accessible to everyone, everywhere. 
-            Our platform connects passionate learners with world-class instructors, 
-            creating transformative learning experiences that open doors to new opportunities.
-          </p>
-          <div className="grid grid-cols-2 gap-4">
-            {stats.map((stat, i) => (
-              <div key={i} className="bg-white/5 rounded-xl p-4 text-center">
-                <div className="text-2xl font-bold text-white">{stat.value}</div>
-                <div className="text-sm text-gray-400">{stat.label}</div>
-              </div>
-            ))}
-          </div>
-        </div>
-      ),
+      title: 'About Us', icon: Rocket,
+      content: <p className="text-gray-300 leading-relaxed">LearnX is being built as a learning platform where people, educators, organizations and technology can meet around useful learning experiences. This product will evolve as the platform grows.</p>,
     },
     careers: {
-      title: 'Join Our Team',
-      icon: Briefcase,
-      content: (
-        <div className="space-y-4">
-          <p className="text-gray-300">We're always looking for passionate people to join us.</p>
-          {['Product Designer', 'Full Stack Developer', 'Content Strategist', 'Customer Success'].map((role, i) => (
-            <div key={i} className="bg-white/5 rounded-xl p-4 flex justify-between items-center hover:bg-white/10 transition cursor-pointer">
-              <div>
-                <div className="text-white font-medium">{role}</div>
-                <div className="text-sm text-gray-400">Remote • Full-time</div>
-              </div>
-              <ChevronRight className="text-gray-400" size={20} />
-            </div>
-          ))}
-        </div>
-      ),
+      title: 'Join Our Team', icon: Briefcase,
+      content: <div className="space-y-4"><p className="text-gray-300">Opportunities will appear here as LearnX begins building its wider team.</p></div>,
     },
     contact: {
-      title: 'Get in Touch',
-      icon: Mail,
-      content: (
-        <div className="space-y-4">
-          <div className="bg-white/5 rounded-xl p-4 flex items-center gap-4">
-            <Mail className="text-violet-400" size={24} />
-            <div>
-              <div className="text-sm text-gray-400">Email</div>
-              <div className="text-white">hello@learnx.com</div>
-            </div>
-          </div>
-          <div className="bg-white/5 rounded-xl p-4 flex items-center gap-4">
-            <Phone className="text-emerald-400" size={24} />
-            <div>
-              <div className="text-sm text-gray-400">Phone</div>
-              <div className="text-white">+1 (555) 123-4567</div>
-            </div>
-          </div>
-          <div className="bg-white/5 rounded-xl p-4 flex items-center gap-4">
-            <MapPin className="text-amber-400" size={24} />
-            <div>
-              <div className="text-sm text-gray-400">Address</div>
-              <div className="text-white">123 Learning Street, Education City</div>
-            </div>
-          </div>
-        </div>
-      ),
+      title: 'Get in Touch', icon: Mail,
+      content: <div className="space-y-4"><div className="bg-white/5 rounded-xl p-4 flex items-center gap-4"><Mail className="text-violet-400" size={24} /><div><div className="text-sm text-gray-400">Email</div><div className="text-white">hello@learnx.com</div></div></div></div>,
     },
     blog: {
-      title: 'Latest from Blog',
-      icon: FileText,
-      content: (
-        <div className="space-y-4">
-          {[
-            { title: 'The Future of Online Learning', date: 'Jan 28, 2026' },
-            { title: '10 Skills Every Professional Needs', date: 'Jan 25, 2026' },
-            { title: 'How to Stay Motivated While Learning', date: 'Jan 20, 2026' },
-          ].map((post, i) => (
-            <div key={i} className="bg-white/5 rounded-xl p-4 hover:bg-white/10 transition cursor-pointer">
-              <div className="text-white font-medium">{post.title}</div>
-              <div className="text-sm text-gray-400 mt-1">{post.date}</div>
-            </div>
-          ))}
-        </div>
-      ),
+      title: 'Latest from Blog', icon: FileText,
+      content: <p className="text-gray-300">The LearnX publication space will appear here.</p>,
     },
     help: {
-      title: 'Help Center',
-      icon: Headphones,
-      content: (
-        <div className="space-y-4">
-          <p className="text-gray-300">Find answers to common questions or reach out to our support team.</p>
-          <div className="grid grid-cols-2 gap-3">
-            {['Getting Started', 'Account & Billing', 'Courses & Learning', 'Certificates'].map((topic, i) => (
-              <div key={i} className="bg-white/5 rounded-xl p-4 text-center hover:bg-white/10 transition cursor-pointer">
-                <div className="text-white text-sm">{topic}</div>
-              </div>
-            ))}
-          </div>
-        </div>
-      ),
+      title: 'Help Center', icon: Headphones,
+      content: <p className="text-gray-300">Help and support resources will be built as the platform grows.</p>,
     },
     terms: {
-      title: 'Terms of Service',
-      icon: FileText,
-      content: (
-        <div className="text-gray-300 text-sm leading-relaxed space-y-4">
-          <p>By using our platform, you agree to these terms. We provide educational content and services as-is.</p>
-          <p>Users are responsible for maintaining account security. Course access is granted upon purchase or subscription.</p>
-          <p>Content may not be redistributed without permission. We reserve the right to update these terms.</p>
-        </div>
-      ),
+      title: 'Terms of Service', icon: FileText,
+      content: <div className="text-gray-300 text-sm leading-relaxed space-y-4"><p>These terms will be replaced with the formal LearnX terms before public release.</p></div>,
     },
     privacy: {
-      title: 'Privacy Policy',
-      icon: Shield,
-      content: (
-        <div className="text-gray-300 text-sm leading-relaxed space-y-4">
-          <p>We collect minimal data needed to provide our services. Your learning progress and account information are securely stored.</p>
-          <p>We never sell your personal data. Analytics are used to improve the learning experience.</p>
-          <p>You can request data deletion at any time by contacting our support team.</p>
-        </div>
-      ),
+      title: 'Privacy Policy', icon: Shield,
+      content: <div className="text-gray-300 text-sm leading-relaxed space-y-4"><p>The final privacy policy will be published before public release.</p></div>,
     },
     accessibility: {
-      title: 'Accessibility',
-      icon: Heart,
-      content: (
-        <div className="text-gray-300 text-sm leading-relaxed space-y-4">
-          <p>We're committed to making learning accessible to everyone. Our platform follows WCAG 2.1 guidelines.</p>
-          <p>Features include keyboard navigation, screen reader support, adjustable text sizes, and high contrast modes.</p>
-          <p>If you encounter any accessibility issues, please contact us.</p>
-        </div>
-      ),
+      title: 'Accessibility', icon: Heart,
+      content: <div className="text-gray-300 text-sm leading-relaxed space-y-4"><p>Accessibility will remain a product requirement as LearnX evolves.</p></div>,
     },
-  };
-
-  // Animation variants
-  const containerVariants = {
-    hidden: { opacity: 0 },
-    visible: {
-      opacity: 1,
-      transition: { staggerChildren: 0.1, delayChildren: 0.2 }
-    }
-  };
-
-  const itemVariants = {
-    hidden: { opacity: 0, y: 30 },
-    visible: { 
-      opacity: 1, 
-      y: 0,
-      transition: { duration: 0.6, ease: [0.22, 1, 0.36, 1] }
-    }
-  };
-
-  // Section component with scroll animation
-  const AnimatedSection = ({ children, className = "" }) => {
-    const ref = useRef(null);
-    const isInView = useInView(ref, { once: true, margin: "-100px" });
-    
-    return (
-      <motion.section
-        ref={ref}
-        className={className}
-        initial={{ opacity: 0, y: 50 }}
-        animate={isInView ? { opacity: 1, y: 0 } : { opacity: 0, y: 50 }}
-        transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
-      >
-        {children}
-      </motion.section>
-    );
   };
 
   return (
-    <div 
-      className="overflow-hidden relative"
-      style={{ 
-        background: 'linear-gradient(180deg, #020617 0%, #0f172a 50%, #020617 100%)',
-        marginTop: '-80px',
-        paddingTop: '80px'
-      }}
+    <div
+      className="overflow-hidden relative bg-[#05070b] text-white"
+      style={{ marginTop: '-80px', paddingTop: '80px' }}
     >
-      
-      {/* ═══════════════════════════════════════════════════════════════════════
-          HERO SECTION - Clean, Bold, Universal
-      ═══════════════════════════════════════════════════════════════════════ */}
-      <section className="relative min-h-screen flex items-center justify-center pt-8">
-        {/* Background Elements */}
-        <div className="absolute inset-0 overflow-hidden">
-          {/* Gradient Orbs - subtle */}
-          <div className="absolute top-1/4 left-1/4 w-[500px] h-[500px] bg-violet-600/10 rounded-full blur-[150px]" />
-          <div className="absolute bottom-1/4 right-1/4 w-[400px] h-[400px] bg-cyan-500/8 rounded-full blur-[150px]" />
-          
-          {/* Grid Pattern */}
-          <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGRlZnM+PHBhdHRlcm4gaWQ9ImdyaWQiIHdpZHRoPSI2MCIgaGVpZ2h0PSI2MCIgcGF0dGVyblVuaXRzPSJ1c2VyU3BhY2VPblVzZSI+PHBhdGggZD0iTSA2MCAwIEwgMCAwIDAgNjAiIGZpbGw9Im5vbmUiIHN0cm9rZT0icmdiYSgyNTUsMjU1LDI1NSwwLjAzKSIgc3Ryb2tlLXdpZHRoPSIxIi8+PC9wYXR0ZXJuPjwvZGVmcz48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSJ1cmwoI2dyaWQpIi8+PC9zdmc+')] opacity-40" />
+      <motion.div
+        style={{ scaleX: smoothProgress, transformOrigin: '0% 50%' }}
+        className="fixed top-0 left-0 right-0 h-px bg-white/70 z-[70]"
+      />
+
+      {/* HERO */}
+      <section className="relative min-h-[92vh] flex items-center justify-center px-6 overflow-hidden">
+        <div className="absolute inset-0 pointer-events-none">
+          <div className="absolute -top-40 left-1/2 -translate-x-1/2 w-[700px] h-[700px] rounded-full bg-violet-500/[0.07] blur-[140px]" />
+          <div className="absolute right-[-15%] bottom-[-20%] w-[500px] h-[500px] rounded-full bg-cyan-400/[0.05] blur-[120px]" />
+          <div className="absolute inset-0 opacity-[0.035]" style={{ backgroundImage: 'linear-gradient(rgba(255,255,255,.7) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.7) 1px, transparent 1px)', backgroundSize: '72px 72px' }} />
         </div>
 
-        {/* Hero Content */}
-        <div className="relative z-10 max-w-6xl mx-auto px-6 text-center">
-          <motion.div
-            variants={containerVariants}
-            initial="hidden"
-            animate="visible"
-            className="space-y-8"
-          >
-            {/* Badge */}
-            <motion.div variants={itemVariants}>
-              <span className="inline-flex items-center gap-2 px-4 py-2 bg-white/5 backdrop-blur-sm border border-white/10 rounded-full text-sm text-gray-300">
-                <Sparkles className="w-4 h-4 text-amber-400" />
-                <span>Learning, made simple.</span>
-              </span>
-            </motion.div>
-
-            {/* Main Headline */}
-            <motion.h1 
-              variants={itemVariants}
-              className="text-5xl md:text-7xl lg:text-8xl font-bold tracking-tight"
-            >
-              <span className="text-white">Learn</span>
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-violet-400 via-fuchsia-400 to-cyan-400"> Without</span>
-              <br />
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 via-emerald-400 to-amber-400">Limits.</span>
-              <br />
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 via-emerald-400 to-amber-400">Build Beyond Them.</span>
-            </motion.h1>
-
-            {/* Subtitle */}
-            <motion.p 
-              variants={itemVariants}
-              className="max-w-2xl mx-auto text-lg md:text-xl text-gray-400 leading-relaxed"
-            >
-              The world keeps changing. Your ability to learn should never have to catch up.
-            </motion.p>
-
-            {/* CTA Buttons */}
-            <motion.div 
-              variants={itemVariants}
-              className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-4"
-            >
-              <Link to="/courses">
-                <motion.button
-                  whileHover={{ scale: 1.02, boxShadow: "0 20px 40px rgba(139, 92, 246, 0.3)" }}
-                  whileTap={{ scale: 0.98 }}
-                  className="group px-8 py-4 bg-gradient-to-r from-violet-600 to-fuchsia-600 rounded-xl text-white font-semibold text-lg flex items-center gap-3 shadow-lg shadow-violet-500/25"
-                >
-                  <span>Explore Courses</span>
-                  <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
-                </motion.button>
-              </Link>
-              
-              <Link to="/register">
-                <motion.button
-                  whileHover={{ scale: 1.02, backgroundColor: "rgba(255,255,255,0.1)" }}
-                  whileTap={{ scale: 0.98 }}
-                  className="px-8 py-4 bg-white/5 backdrop-blur-sm border border-white/10 rounded-xl text-white font-semibold text-lg flex items-center gap-3"
-                >
-                  <Play className="w-5 h-5" />
-                  <span>Start Free</span>
-                </motion.button>
-              </Link>
-            </motion.div>
-
-            {/* Stats Row */}
-            <motion.div 
-              variants={itemVariants}
-              className="pt-12 grid grid-cols-2 md:grid-cols-4 gap-6 max-w-3xl mx-auto"
-            >
-              {stats.map((stat, i) => (
-                <div key={i} className="text-center">
-                  <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-gradient-to-br from-white/10 to-white/5 mb-3">
-                    <stat.icon className="w-6 h-6 text-violet-400" />
-                  </div>
-                  <div className="text-2xl md:text-3xl font-bold text-white">{stat.value}</div>
-                  <div className="text-sm text-gray-500">{stat.label}</div>
-                </div>
-              ))}
-            </motion.div>
+        <motion.div variants={containerVariants} initial="hidden" animate="visible" className="relative z-10 max-w-6xl mx-auto text-center">
+          <motion.div variants={itemVariants} className="mb-8">
+            <span className="inline-flex items-center gap-2 text-xs uppercase tracking-[0.28em] text-white/45">
+              <Sparkles className="w-3.5 h-3.5" /> Learning, made simple.
+            </span>
           </motion.div>
-        </div>
 
-        {/* Scroll Indicator */}
-        <motion.div 
-          className="absolute bottom-8 left-1/2 -translate-x-1/2"
-          animate={{ y: [0, 8, 0] }}
-          transition={{ duration: 2, repeat: Infinity }}
-        >
-          <div className="w-6 h-10 rounded-full border-2 border-white/20 flex items-start justify-center p-2">
-            <motion.div 
-              className="w-1.5 h-1.5 bg-white/50 rounded-full"
-              animate={{ y: [0, 12, 0] }}
-              transition={{ duration: 2, repeat: Infinity }}
-            />
-          </div>
+          <motion.h1 variants={itemVariants} className="text-5xl md:text-7xl lg:text-[7.5rem] leading-[0.9] font-semibold tracking-[-0.06em]">
+            Learn <span className="text-white/35">without</span><br />
+            limits.<br />
+            <span className="text-white/35">Build beyond them.</span>
+          </motion.h1>
+
+          <motion.p variants={itemVariants} className="max-w-2xl mx-auto mt-10 text-base md:text-lg text-white/48 leading-relaxed">
+            One place to discover knowledge, practice skills, create real work, and keep moving into whatever comes next.
+          </motion.p>
+
+          <motion.div variants={itemVariants} className="mt-9 flex flex-col sm:flex-row justify-center gap-3">
+            <Link to="/courses" className="group inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-full bg-white text-black font-medium hover:bg-white/90 transition-colors">
+              Explore the learning space <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+            </Link>
+            <Link to="/register" className="inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-full border border-white/12 bg-white/[0.03] text-white/80 hover:bg-white/[0.07] transition-colors">
+              <Play className="w-4 h-4" /> Start free
+            </Link>
+          </motion.div>
         </motion.div>
+
+        <div className="absolute bottom-8 left-1/2 -translate-x-1/2 text-[10px] uppercase tracking-[0.3em] text-white/25">Explore below</div>
       </section>
 
-      {/* ═══════════════════════════════════════════════════════════════════════
-          FEATURES SECTION - Why Choose Us
-      ═══════════════════════════════════════════════════════════════════════ */}
-      <AnimatedSection className="py-24 px-6">
-        <div className="max-w-6xl mx-auto">
-          <div className="text-center mb-16">
-            <motion.span 
-              initial={{ opacity: 0 }}
-              whileInView={{ opacity: 1 }}
-              className="text-violet-400 text-sm font-semibold tracking-wider uppercase"
-            >
-              Why Choose Us
-            </motion.span>
-            <h2 className="text-3xl md:text-5xl font-bold text-white mt-4">
-              Everything You Need to <span className="text-transparent bg-clip-text bg-gradient-to-r from-violet-400 to-cyan-400">Succeed</span>
-            </h2>
+      {/* LEARNING EXPLORER */}
+      <AnimatedSection className="px-6 py-28 md:py-36">
+        <div className="max-w-7xl mx-auto">
+          <div className="max-w-3xl mb-12">
+            <p className="text-xs uppercase tracking-[0.28em] text-white/30 mb-4">Explore the learning space</p>
+            <h2 className="text-4xl md:text-6xl font-semibold tracking-[-0.05em]">Start anywhere.<br /><span className="text-white/35">Go as deep as you want.</span></h2>
+            <p className="mt-6 max-w-2xl text-white/45 leading-relaxed">A catalogue that grows with what you want to learn.</p>
           </div>
 
-          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
-            {features.map((feature, i) => (
-              <motion.div
-                key={i}
-                initial={{ opacity: 0, y: 30 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                transition={{ delay: i * 0.1 }}
-                whileHover={{ y: -5, boxShadow: "0 25px 50px rgba(0,0,0,0.3)" }}
-                className="group relative p-6 rounded-2xl bg-gradient-to-b from-white/5 to-transparent border border-white/5 hover:border-white/10 transition-all duration-300"
-              >
-                {/* Glow Effect */}
-                <div className={`absolute inset-0 rounded-2xl bg-gradient-to-r ${feature.gradient} opacity-0 group-hover:opacity-10 blur-xl transition-opacity duration-500`} />
-                
-                <div className={`relative inline-flex items-center justify-center w-14 h-14 rounded-xl bg-gradient-to-r ${feature.gradient} mb-5`}>
-                  <feature.icon className="w-7 h-7 text-white" />
-                </div>
-                
-                <h3 className="text-xl font-semibold text-white mb-3">{feature.title}</h3>
-                <p className="text-gray-400 leading-relaxed">{feature.description}</p>
-              </motion.div>
-            ))}
-          </div>
-        </div>
-      </AnimatedSection>
+          <div
+            className="relative overflow-hidden rounded-[2rem] border border-white/[0.08] bg-white/[0.018] min-h-[610px] md:min-h-[650px]"
+            style={{ perspective: '1400px', '--card-shift': 'clamp(145px, 23vw, 270px)' }}
+          >
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_48%,rgba(139,92,246,.10),transparent_35%)] pointer-events-none" />
+            <div className="absolute inset-0 opacity-[0.025] pointer-events-none" style={{ backgroundImage: 'radial-gradient(circle, white 1px, transparent 1px)', backgroundSize: '28px 28px' }} />
 
-      {/* ═══════════════════════════════════════════════════════════════════════
-          CATEGORIES SECTION
-      ═══════════════════════════════════════════════════════════════════════ */}
-      <AnimatedSection className="py-24 px-6 bg-gradient-to-b from-transparent via-violet-950/20 to-transparent">
-        <div className="max-w-6xl mx-auto">
-          <div className="text-center mb-16">
-            <span className="text-cyan-400 text-sm font-semibold tracking-wider uppercase">Explore Topics</span>
-            <h2 className="text-3xl md:text-5xl font-bold text-white mt-4">
-              Learn <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-emerald-400">Anything</span> You Want
-            </h2>
-            <p className="text-gray-400 mt-4 max-w-xl mx-auto">
-              From business to technology, creativity to science—find courses that match your goals.
-            </p>
-          </div>
-
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-            {categories.map((cat, i) => (
-              <motion.div
-                key={i}
-                initial={{ opacity: 0, scale: 0.9 }}
-                whileInView={{ opacity: 1, scale: 1 }}
-                transition={{ delay: i * 0.05 }}
-                whileHover={{ scale: 1.02 }}
-                onClick={() => navigate('/courses')}
-                className="group cursor-pointer p-6 rounded-2xl bg-white/5 border border-white/5 hover:border-white/20 hover:bg-white/10 transition-all duration-300"
-              >
-                <div className="flex items-center gap-4">
-                  <span className="text-4xl">{cat.icon}</span>
-                  <div>
-                    <h3 className="text-lg font-semibold text-white group-hover:text-violet-300 transition-colors">
-                      {cat.name}
-                    </h3>
-                    <p className="text-sm text-gray-500">{cat.count}+ courses</p>
-                  </div>
-                </div>
-              </motion.div>
-            ))}
-          </div>
-        </div>
-      </AnimatedSection>
-
-      {/* ═══════════════════════════════════════════════════════════════════════
-          FEATURED COURSES SECTION
-      ═══════════════════════════════════════════════════════════════════════ */}
-      <AnimatedSection className="py-24 px-6">
-        <div className="max-w-6xl mx-auto">
-          <div className="flex flex-col md:flex-row md:items-end md:justify-between mb-12">
-            <div>
-              <span className="text-amber-400 text-sm font-semibold tracking-wider uppercase">Featured Courses</span>
-              <h2 className="text-3xl md:text-5xl font-bold text-white mt-4">
-                Start Learning <span className="text-transparent bg-clip-text bg-gradient-to-r from-amber-400 to-orange-400">Today</span>
-              </h2>
+            <div className="absolute top-7 left-1/2 -translate-x-1/2 z-40 text-center">
+              <div className="text-[10px] uppercase tracking-[0.28em] text-white/25">Learning catalogue</div>
+              <div className="mt-2 text-xs text-white/35">{exploreItems.length ? `${activeExploreIndex + 1} / ${exploreItems.length}` : '0 / 0'}</div>
             </div>
-            <Link to="/courses" className="mt-6 md:mt-0 group flex items-center gap-2 text-violet-400 hover:text-violet-300 transition-colors">
-              <span>View all courses</span>
-              <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-            </Link>
+
+            <div className="absolute inset-0 flex items-center justify-center pt-8">
+              {exploreItems.length === 0 ? (
+                <div className="text-center text-white/35">Courses will appear here as the catalogue grows.</div>
+              ) : (
+                [-2, -1, 0, 1, 2].map((offset) => {
+                  const index = (activeExploreIndex + offset + exploreItems.length) % exploreItems.length;
+                  const item = exploreItems[index];
+                  const isActive = offset === 0;
+                  const abs = Math.abs(offset);
+                  const x = offset === 0 ? 0 : offset < 0 ? `calc(${offset} * var(--card-shift))` : `calc(${offset} * var(--card-shift))`;
+                  const accent = item.palette?.accent || '#8b5cf6';
+                  return (
+                    <motion.button
+                      key={`${item.name}-${index}`}
+                      type="button"
+                      drag={isActive ? 'x' : false}
+                      dragConstraints={{ left: 0, right: 0 }}
+                      dragElastic={0.18}
+                      onDragEnd={(_, info) => {
+                        if (Math.abs(info.offset.x) > 70 || Math.abs(info.velocity.x) > 500) {
+                          changeExplore(info.offset.x < 0 ? 1 : -1);
+                        }
+                      }}
+                      onClick={() => selectExploreItem(index)}
+                      animate={{
+                        x,
+                        scale: isActive ? 1 : abs === 1 ? 0.82 : 0.68,
+                        rotateY: isActive ? 0 : offset < 0 ? 18 : -18,
+                        opacity: isActive ? 1 : abs === 1 ? 0.62 : 0.25,
+                        filter: isActive ? 'blur(0px)' : abs === 1 ? 'blur(0.5px)' : 'blur(1.5px)',
+                      }}
+                      transition={{ type: 'spring', stiffness: 240, damping: 26 }}
+                      className={`absolute left-1/2 -translate-x-1/2 w-[min(78vw,520px)] h-[350px] md:h-[390px] rounded-[2rem] text-left border bg-[#080b11]/95 backdrop-blur-xl overflow-hidden ${isActive ? 'cursor-grab active:cursor-grabbing' : 'cursor-pointer'}`}
+                      style={{
+                        zIndex: 30 - abs,
+                        borderColor: isActive ? `${accent}80` : 'rgba(255,255,255,.08)',
+                        boxShadow: isActive ? `0 30px 100px ${item.palette?.soft || 'rgba(139,92,246,.15)'}` : '0 20px 60px rgba(0,0,0,.35)',
+                        transformStyle: 'preserve-3d',
+                      }}
+                    >
+                      <div className="absolute inset-0" style={{ background: `radial-gradient(circle at 80% 15%, ${item.palette?.soft || 'rgba(139,92,246,.12)'}, transparent 38%)` }} />
+                      <div className="relative h-full p-7 md:p-10 flex flex-col justify-between">
+                        <div className="flex items-start justify-between">
+                          <span className="text-2xl" style={{ color: accent }}>{item.icon}</span>
+                          <span className="text-[10px] uppercase tracking-[0.24em] text-white/25">{String(item.count).padStart(2, '0')} courses</span>
+                        </div>
+                        <div>
+                          <div className="text-[10px] uppercase tracking-[0.28em] text-white/30 mb-4">{item.isAll ? 'The full catalogue' : 'Learning domain'}</div>
+                          <h3 className="text-4xl md:text-5xl font-semibold tracking-[-0.045em] text-white">{item.name}</h3>
+                          <p className="mt-4 max-w-md text-sm md:text-base leading-relaxed text-white/40">
+                            {item.isAll ? 'Browse every course currently available on LearnX.' : `Explore ${item.count} course${item.count === 1 ? '' : 's'} currently available in ${item.name}.`}
+                          </p>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs text-white/25">Explore</span>
+                          <span className={`inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium ${isActive ? 'bg-white text-black' : 'bg-white/5 text-white/60'}`}>
+                            {item.isAll ? 'Browse all' : 'Explore'} <ArrowRight className="w-4 h-4" />
+                          </span>
+                        </div>
+                      </div>
+                    </motion.button>
+                  );
+                })
+              )}
+            </div>
+
+            <div className="absolute bottom-7 left-1/2 -translate-x-1/2 z-40 flex items-center gap-2">
+              <button type="button" onClick={() => changeExplore(-1)} className="w-10 h-10 rounded-full border border-white/10 bg-white/[0.03] text-white/50 hover:text-white hover:bg-white/10 transition-colors" aria-label="Previous learning domain">
+                <ChevronRight className="w-4 h-4 rotate-180 mx-auto" />
+              </button>
+              <button type="button" onClick={() => changeExplore(1)} className="w-10 h-10 rounded-full border border-white/10 bg-white/[0.03] text-white/50 hover:text-white hover:bg-white/10 transition-colors" aria-label="Next learning domain">
+                <ChevronRight className="w-4 h-4 mx-auto" />
+              </button>
+            </div>
           </div>
 
-          {loading ? (
-            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {[...Array(6)].map((_, i) => (
-                <div key={i} className="animate-pulse rounded-2xl bg-white/5 h-80" />
-              ))}
-            </div>
-          ) : (
-            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {courses.map((course, i) => (
-                <motion.div
-                  key={course._id}
-                  initial={{ opacity: 0, y: 30 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  transition={{ delay: i * 0.1 }}
-                  whileHover={{ y: -8 }}
-                  onClick={() => navigate(`/courses/${course._id}`)}
-                  className="group cursor-pointer rounded-2xl bg-gradient-to-b from-white/5 to-white/[0.02] border border-white/5 hover:border-white/20 overflow-hidden transition-all duration-300"
-                >
-                  {/* Thumbnail */}
-                  <div className="relative h-44 overflow-hidden">
-                    <img 
-                      src={resolveCourseThumbnail(course)}
-                      alt={course.title}
-                      className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
-                      onError={(e) => applyThumbnailFallback(e, course)}
-                    />
-                    <div className="absolute inset-0 bg-gradient-to-t from-slate-900 to-transparent" />
-                    
-                    {/* Price Badge */}
-                    <div className="absolute top-3 right-3 px-3 py-1 rounded-full bg-black/50 backdrop-blur-sm text-white text-sm font-semibold">
-                      {course.price === 0 ? 'Free' : `₹${course.price}`}
-                    </div>
-                  </div>
-
-                  {/* Content */}
-                  <div className="p-5">
-                    <div className="flex items-center gap-2 text-xs text-gray-400 mb-2">
-                      <span className="px-2 py-0.5 rounded-full bg-violet-500/20 text-violet-300">
-                        {course.category || 'General'}
-                      </span>
-                      <span className="flex items-center gap-1">
-                        <Clock className="w-3 h-3" />
-                        {course.duration || '5h'}
-                      </span>
-                    </div>
-                    
-                    <h3 className="text-lg font-semibold text-white group-hover:text-violet-300 transition-colors line-clamp-2">
-                      {course.title}
-                    </h3>
-                    
-                    <p className="text-sm text-gray-500 mt-2 line-clamp-2">
-                      {course.description}
-                    </p>
-
-                    <div className="flex items-center justify-between mt-4 pt-4 border-t border-white/5">
-                      <div className="flex items-center gap-1 text-amber-400">
-                        <Star className="w-4 h-4 fill-current" />
-                        <span className="text-sm font-medium">{course.rating || '4.5'}</span>
-                      </div>
-                      <div className="flex items-center gap-1 text-gray-400 text-sm">
-                        <Users className="w-4 h-4" />
-                        <span>{course.studentsEnrolled || 0} enrolled</span>
-                      </div>
-                    </div>
-                  </div>
-                </motion.div>
-              ))}
+          {activeExploreItem && (
+            <div className="mt-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 px-1">
+              <div className="text-sm text-white/35">
+                Viewing <span className="text-white/70">{activeExploreItem.name}</span> · {activeExploreItem.count} course{activeExploreItem.count === 1 ? '' : 's'}
+              </div>
+              <button
+                type="button"
+                onClick={() => activeExploreItem.isAll ? navigate('/courses') : goToDomain(activeExploreItem.name)}
+                className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-full bg-white text-black text-sm font-medium hover:bg-white/90 transition-colors"
+              >
+                {activeExploreItem.isAll ? 'Browse all courses' : `Explore ${activeExploreItem.name}`}
+                <ArrowRight className="w-4 h-4" />
+              </button>
             </div>
           )}
         </div>
       </AnimatedSection>
 
-      {/* ═══════════════════════════════════════════════════════════════════════
-          TESTIMONIALS SECTION
-      ═══════════════════════════════════════════════════════════════════════ */}
-      <AnimatedSection className="py-24 px-6 bg-gradient-to-b from-transparent via-cyan-950/10 to-transparent">
-        <div className="max-w-6xl mx-auto">
-          <div className="text-center mb-16">
-            <span className="text-emerald-400 text-sm font-semibold tracking-wider uppercase">Testimonials</span>
-            <h2 className="text-3xl md:text-5xl font-bold text-white mt-4">
-              Loved by <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-cyan-400">Learners</span>
-            </h2>
-          </div>
-
-          <div className="grid md:grid-cols-3 gap-6">
-            {testimonials.map((testimonial, i) => (
-              <motion.div
-                key={i}
-                initial={{ opacity: 0, y: 30 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                transition={{ delay: i * 0.15 }}
-                className="p-6 rounded-2xl bg-white/5 border border-white/5"
-              >
-                {/* Stars */}
-                <div className="flex gap-1 mb-4">
-                  {[...Array(testimonial.rating)].map((_, j) => (
-                    <Star key={j} className="w-5 h-5 text-amber-400 fill-current" />
-                  ))}
-                </div>
-                
-                <p className="text-gray-300 leading-relaxed mb-6">"{testimonial.quote}"</p>
-                
-                <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 rounded-full bg-gradient-to-br from-violet-500 to-fuchsia-500 flex items-center justify-center text-white font-bold">
-                    {testimonial.image}
-                  </div>
+      {/* LEARNING PROCESS */}
+      <AnimatedSection className="px-6 py-28 md:py-36 border-y border-white/[0.06]">
+        <div className="max-w-7xl mx-auto">
+          <div className="grid lg:grid-cols-[0.8fr_1.2fr] gap-16 items-start">
+            <div className="lg:sticky lg:top-28">
+              <p className="text-xs uppercase tracking-[0.28em] text-white/30 mb-4">The learning loop</p>
+              <h2 className="text-4xl md:text-6xl font-semibold tracking-[-0.05em]">Learning is not a video.<br /><span className="text-white/35">It's a loop.</span></h2>
+              <p className="mt-6 max-w-md text-white/45 leading-relaxed">Content starts the process. Practice, creation and reflection turn it into capability.</p>
+            </div>
+            <div className="divide-y divide-white/[0.08] border-t border-white/[0.08]">
+              {PROCESS.map((step) => (
+                <motion.div key={step.number} whileHover={{ x: 8 }} className="group py-8 md:py-10 grid grid-cols-[56px_1fr_auto] gap-5 items-start cursor-default">
+                  <div className="text-xs text-white/25 pt-1">{step.number}</div>
                   <div>
-                    <div className="font-semibold text-white">{testimonial.name}</div>
-                    <div className="text-sm text-gray-400">{testimonial.role} at {testimonial.company}</div>
+                    <h3 className="text-2xl md:text-4xl font-semibold tracking-[-0.03em] group-hover:text-white transition-colors">{step.title}</h3>
+                    <p className="mt-3 max-w-xl text-white/40 leading-relaxed">{step.description}</p>
                   </div>
-                </div>
-              </motion.div>
-            ))}
+                  <step.icon className="w-5 h-5 text-white/20 group-hover:text-white/70 transition-colors" />
+                </motion.div>
+              ))}
+            </div>
           </div>
         </div>
       </AnimatedSection>
 
-      {/* ═══════════════════════════════════════════════════════════════════════
-          CTA SECTION
-      ═══════════════════════════════════════════════════════════════════════ */}
-      <AnimatedSection className="py-24 px-6">
-        <div className="max-w-4xl mx-auto">
-          <motion.div
-            whileHover={{ scale: 1.01 }}
-            className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-violet-600 via-fuchsia-600 to-cyan-600 p-[1px]"
-          >
-            <div className="relative rounded-3xl bg-slate-950/90 backdrop-blur-xl p-12 md:p-16 text-center">
-              {/* Background Glow */}
-              <div className="absolute inset-0 bg-gradient-to-r from-violet-600/20 via-fuchsia-600/20 to-cyan-600/20 blur-3xl" />
-              
-              <div className="relative z-10">
-                <motion.div
-                  animate={{ rotate: [0, 5, -5, 0] }}
-                  transition={{ duration: 4, repeat: Infinity }}
-                  className="inline-flex items-center justify-center w-20 h-20 rounded-2xl bg-gradient-to-br from-violet-500 to-fuchsia-500 mb-8"
-                >
-                  <GraduationCap className="w-10 h-10 text-white" />
-                </motion.div>
-
-                <h2 className="text-3xl md:text-5xl font-bold text-white mb-6">
-                  Ready to Start Your Journey?
-                </h2>
-                
-                <p className="text-gray-300 text-lg max-w-xl mx-auto mb-8">
-                  Join thousands of learners who are already transforming their careers. 
-                  Your first course is on us.
-                </p>
-
-                <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-                  <Link to="/register">
-                    <motion.button
-                      whileHover={{ scale: 1.05 }}
-                      whileTap={{ scale: 0.95 }}
-                      className="px-8 py-4 bg-white text-slate-900 rounded-xl font-semibold text-lg flex items-center gap-2"
-                    >
-                      <span>Get Started Free</span>
-                      <ArrowRight className="w-5 h-5" />
-                    </motion.button>
-                  </Link>
-                  <Link to="/courses">
-                    <motion.button
-                      whileHover={{ scale: 1.05 }}
-                      whileTap={{ scale: 0.95 }}
-                      className="px-8 py-4 bg-white/10 text-white rounded-xl font-semibold text-lg"
-                    >
-                      Browse Courses
-                    </motion.button>
-                  </Link>
-                </div>
-              </div>
+      {/* REAL CATALOGUE */}
+      <AnimatedSection className="px-6 py-28 md:py-36">
+        <div className="max-w-7xl mx-auto">
+          <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-6 mb-12">
+            <div>
+              <p className="text-xs uppercase tracking-[0.28em] text-white/30 mb-4">From the catalogue</p>
+              <h2 className="text-4xl md:text-6xl font-semibold tracking-[-0.05em]">Find something worth<br /><span className="text-white/35">going deep on.</span></h2>
             </div>
-          </motion.div>
+            <Link to="/courses" className="group inline-flex items-center gap-2 text-sm text-white/55 hover:text-white transition-colors">Open full catalogue <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" /></Link>
+          </div>
+
+          {loading ? (
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-5">{[0,1,2,3,4,5].map((i) => <div key={i} className="h-80 rounded-2xl bg-white/[0.035] animate-pulse" />)}</div>
+          ) : featuredCourses.length ? (
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-5">
+              {featuredCourses.map((course, index) => (
+                <motion.div key={course._id} initial={{ opacity: 0, y: 24 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: index * 0.05 }} whileHover={{ y: -5 }} onClick={() => navigate(`/courses/${course._id}`)} className="group cursor-pointer rounded-2xl border border-white/[0.08] bg-white/[0.025] overflow-hidden hover:bg-white/[0.045] hover:border-white/[0.16] transition-all">
+                  <div className="relative h-48 overflow-hidden">
+                    <img src={resolveCourseThumbnail(course)} alt={course.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" onError={(e) => applyThumbnailFallback(e, course)} />
+                    <div className="absolute inset-0 bg-gradient-to-t from-[#05070b] via-transparent to-transparent" />
+                    <div className="absolute left-4 bottom-4 text-xs text-white/60">{course.category || 'General'}</div>
+                    <div className="absolute right-4 bottom-4 text-xs font-medium text-white/85">{course.price === 0 ? 'Free' : `₹${course.price}`}</div>
+                  </div>
+                  <div className="p-5">
+                    <h3 className="text-lg font-medium leading-snug line-clamp-2 group-hover:text-white/80">{course.title}</h3>
+                    <p className="mt-2 text-sm text-white/35 line-clamp-2 leading-relaxed">{course.description}</p>
+                    <div className="mt-5 flex items-center justify-between text-xs text-white/30">
+                      <span className="flex items-center gap-1.5"><Clock className="w-3.5 h-3.5" /> {course.duration || 'Self-paced'}</span>
+                      <span className="inline-flex items-center gap-1 text-white/45">Open <ArrowRight className="w-3.5 h-3.5" /></span>
+                    </div>
+                  </div>
+                </motion.div>
+              ))}
+            </div>
+          ) : (
+            <div className="py-20 text-center border border-white/[0.08] rounded-2xl text-white/40">Courses will appear here as the catalogue grows.</div>
+          )}
+        </div>
+      </AnimatedSection>
+
+      {/* PRINCIPLES */}
+      <AnimatedSection className="px-6 py-28 md:py-36 bg-white/[0.018] border-y border-white/[0.06]">
+        <div className="max-w-7xl mx-auto">
+          <div className="max-w-3xl">
+            <p className="text-xs uppercase tracking-[0.28em] text-white/30 mb-4">What LearnX is becoming</p>
+            <h2 className="text-4xl md:text-6xl font-semibold tracking-[-0.05em]">A platform that adapts to the learner,<br /><span className="text-white/35">not the other way around.</span></h2>
+          </div>
+          <div className="mt-16 grid md:grid-cols-3 gap-8">
+            <div className="border-t border-white/10 pt-6"><div className="text-xs uppercase tracking-[0.2em] text-white/30">01 — Content</div><p className="mt-4 text-white/55 leading-relaxed">Human-created learning and AI-assisted creation can coexist. AI accelerates production; it does not define the platform.</p></div>
+            <div className="border-t border-white/10 pt-6"><div className="text-xs uppercase tracking-[0.2em] text-white/30">02 — Discovery</div><p className="mt-4 text-white/55 leading-relaxed">The catalogue should remain explorable whether it contains dozens of courses or millions.</p></div>
+            <div className="border-t border-white/10 pt-6"><div className="text-xs uppercase tracking-[0.2em] text-white/30">03 — Ecosystem</div><p className="mt-4 text-white/55 leading-relaxed">Learners, educators, organizations and credential partners will eventually share one infrastructure.</p></div>
+          </div>
+        </div>
+      </AnimatedSection>
+
+      {/* CTA */}
+      <AnimatedSection className="px-6 py-32 md:py-40">
+        <div className="max-w-5xl mx-auto text-center">
+          <p className="text-xs uppercase tracking-[0.3em] text-white/30 mb-6">Your next subject is waiting</p>
+          <h2 className="text-5xl md:text-7xl font-semibold tracking-[-0.055em]">Choose a direction.<br /><span className="text-white/35">Then go deeper.</span></h2>
+          <p className="max-w-xl mx-auto mt-7 text-white/40 leading-relaxed">Explore the current catalogue today. The learning space will grow with what gets created tomorrow.</p>
+          <div className="mt-9"><Link to="/courses" className="group inline-flex items-center gap-2 px-7 py-3.5 rounded-full bg-white text-black font-medium hover:bg-white/90">Explore LearnX <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" /></Link></div>
         </div>
       </AnimatedSection>
 
