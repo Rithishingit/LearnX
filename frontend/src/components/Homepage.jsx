@@ -348,7 +348,7 @@ const Homepage = () => {
             <motion.div variants={itemVariants}>
               <span className="inline-flex items-center gap-2 px-4 py-2 bg-white/5 backdrop-blur-sm border border-white/10 rounded-full text-sm text-gray-300">
                 <Sparkles className="w-4 h-4 text-amber-400" />
-                <span>Trusted by 50,000+ learners worldwide</span>
+                <span>Learning, made simple.</span>
               </span>
             </motion.div>
 
@@ -360,7 +360,9 @@ const Homepage = () => {
               <span className="text-white">Learn</span>
               <span className="text-transparent bg-clip-text bg-gradient-to-r from-violet-400 via-fuchsia-400 to-cyan-400"> Without</span>
               <br />
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 via-emerald-400 to-amber-400">Limits</span>
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 via-emerald-400 to-amber-400">Limits.</span>
+              <br />
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 via-emerald-400 to-amber-400">Build Beyond Them.</span>
             </motion.h1>
 
             {/* Subtitle */}
@@ -368,8 +370,7 @@ const Homepage = () => {
               variants={itemVariants}
               className="max-w-2xl mx-auto text-lg md:text-xl text-gray-400 leading-relaxed"
             >
-              Master new skills with world-class courses. Whether you're advancing your career, 
-              exploring new passions, or building expertise—your journey starts here.
+              The world keeps changing. Your ability to learn should never have to catch up.
             </motion.p>
 
             {/* CTA Buttons */}
