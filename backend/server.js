@@ -1,13 +1,12 @@
 const express = require('express');
 const dotenv = require('dotenv');
+dotenv.config();
+
 const cors = require('cors');
 const cookieParser = require('cookie-parser');
 const mongoose = require('mongoose');
 const path = require('path');
 const passport = require('./config/passport');
-
-dotenv.config();
-
 const app = express();
 
 // Middleware
